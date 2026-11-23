@@ -99,7 +99,11 @@ def render_and_push(p, cfg, out_dir, do_push, log=print):
     log("subscription: %d nodes, format=%s -> %s" % (len(nodes), mode, path_yaml))
 
     summary = {"nodes": [{k: n.get(k) for k in ("name", "ip", "city", "isp", "g204", "xcom")} for n in nodes],
-               "clash_bytes": len(clash), "format": mode}
+               "clash_bytes": len(clash), "format": mode,
+               "ts": time.strftime("%Y-%m-%d %H:%M:%S")}
+    # public-safe copy for CI artifacts: node metadata only, never the credential
+    open(os.path.join(out_dir, "summary.json"), "w", encoding="utf-8", newline="\n").write(
+        json.dumps(summary, ensure_ascii=False, indent=1) + "\n")
 
     if do_push:
         stamp = time.strftime("%m-%d %H:%M", time.localtime())

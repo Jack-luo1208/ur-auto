@@ -50,10 +50,10 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: python -m urnpool pipeline --out sub
 
-      - name: Upload subscription artifact
+      - name: Upload run summary (no credentials)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: urn-sub-${{ github.run_number }}
-          path: sub/
+          path: sub/summary.json
           retention-days: 7
