@@ -31,7 +31,7 @@ def ensure_bootstrap(p):
     print("bootstrap: empty pool, creating %d accounts" % p.cfg["standby_target"])
     acc = p.register_one(status="active")
     p.store.log("bootstrap_active", acc["id"], acc["network_name"])
-    p.refill_standby(int(p.cfg["standby_target"]))
+    p.refill_standby(int(p.cfg["standby_target"]), log=print)
     return True
 
 
@@ -134,7 +134,7 @@ def cmd_sub(args):
 def cmd_pipeline(args):
     p = make_pool(args)
     ensure_bootstrap(p)
-    print(p.render(p.tick()), flush=True)
+    print(p.render(p.tick(verbose=False)), flush=True)
     summary = render_and_push(p, p.cfg, args.out or os.path.join(ROOT, "sub"), not args.no_push)
     print(json.dumps(summary, ensure_ascii=False), flush=True)
 

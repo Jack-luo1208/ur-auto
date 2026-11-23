@@ -21,7 +21,7 @@ DEFAULT_CONFIG = {
 def load_config(path):
     cfg = dict(DEFAULT_CONFIG)
     if path and os.path.exists(path):
-        cfg.update(json.load(open(path, encoding="utf-8")))
+        cfg.update(json.load(open(path, encoding="utf-8-sig")))
     base = os.path.dirname(os.path.abspath(path or "."))
     if not os.path.isabs(cfg["db_path"]):
         cfg["db_path"] = os.path.join(base, cfg["db_path"])
@@ -44,14 +44,24 @@ class Pool:
         self.threshold = int(cfg["exhaust_threshold_bytes"])
 
     # ---------- registration ----------
-    def register_one(self, status="standby"):
-        acc = self.api.signup()
-        acc["api_key"] = self.api.create_api_key(acc["by_jwt"], "urnpool")
-        bal = self.api.balance(acc["api_key"])
-        acc.update(status=status, start_bytes=bal["start_bytes"], remaining_bytes=bal["remaining_bytes"])
-        aid = self.store.add_account(acc)
-        self.store.log("register", aid, f"{acc['network_name']} balance={human(bal['remaining_bytes'])}")
-        return self.store.get(aid)
+    def register_one(self, status="standby", log=print, attempts=3):
+        last = None
+        for attempt in range(attempts):
+            try:
+                acc = self.api.signup()
+                acc["api_key"] = self.api.create_api_key(acc["by_jwt"], "urnpool")
+                bal = self.api.balance(acc["api_key"])
+                acc.update(status=status, start_bytes=bal["start_bytes"], remaining_bytes=bal["remaining_bytes"])
+                aid = self.store.add_account(acc)
+                self.store.log("register", aid, f"{acc['network_name']} balance={human(bal['remaining_bytes'])}")
+                log("  registered %s (%s)" % (acc["network_name"], human(bal["remaining_bytes"])))
+                return self.store.get(aid)
+            except Exception as exc:  # rate limit / transient platform error
+                last = exc
+                self.store.log("register_error", None, str(exc)[:160])
+                log("  register retry %d/%d: %s" % (attempt + 1, attempts, str(exc)[:90]))
+                time.sleep(6 * (attempt + 1))
+        raise last
 
     # ---------- balances ----------
     def refresh(self, aid=None):
@@ -105,17 +115,23 @@ class Pool:
         self.store.log("emergency_register", acc["id"], "no standby left")
         return acc
 
-    def refill_standby(self, budget):
+    def refill_standby(self, budget, log=print):
         """Register until standby == target. Returns number created."""
         made = 0
+        failures = 0
         target = int(self.cfg["standby_target"])
         while len(self.standby()) < target and made < budget and made < int(self.cfg["max_creates_per_tick"]):
             try:
-                self.register_one(status="standby")
+                self.register_one(status="standby", log=log)
             except Exception as exc:
-                self.store.log("register_error", None, str(exc)[:160])
-                break
+                failures += 1
+                self.store.log("refill_error", None, str(exc)[:160])
+                log("  refill aborted: %s" % str(exc)[:90])
+                if failures >= 2:
+                    break
+                continue
             made += 1
+            failures = 0
             time.sleep(float(self.cfg["register_delay_seconds"]))
         return made
 
