@@ -24,7 +24,16 @@ URnetwork 免费档账号池 + 自动订阅（Clash）+ PushPlus 推送。
 2. 首次运行（手动 `Run workflow` 或首次 push）会自动 bootstrap：注册 1 个 active + 5 个候补。
 3. 之后 `schedule` 每 2 小时自动跑；也可随时 `Run workflow`。
 
-**同步到 Jack-luo1208/ur-auto**：`.github/workflows/mirror.yml` 会把本仓库强推到目标仓库，只需加一个 Secret **`MIRROR_TOKEN`**（对 `Jack-luo1208/ur-auto` 有 `Contents: write` 的 PAT）。没配时该 job 直接绿灯跳过。
+**同步到 Jack-luo1208/ur-auto**：`.github/workflows/mirror.yml` 会把本仓库强推到目标仓库，只需让该令牌有权限，二选一：
+
+- **A（推荐，不用碰 token）**：打开 `Jack-luo1208/ur-auto` → Settings → Collaborators → 添加 `cctrylyj`（Write）→ 把本机凭据对应的账号拉进去后，直接在这里推即可。
+- **B（用 PAT）**：在 `Jack-luo1208` 账号下建一个带 `Contents: read/write` 的 PAT，然后一条命令写进 Secret：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\set-mirror-token.ps1 -Token ghp_xxxxxxxx -Dispatch
+```
+
+脚本会用本机已保存的 GitHub 凭据调 API、用仓库公钥加密后写入 `MIRROR_TOKEN`，并顺手触发一次 mirror。没配置时 mirror job 直接绿灯跳过，不影响主流程。
 
 **状态持久化**：`state/pool.db` 不入库，通过 `actions/cache`（key 前缀 `urnpool-state-`）在两次运行之间传递。缓存被清空时下一轮会自动重建号池（等同首次运行）。
 

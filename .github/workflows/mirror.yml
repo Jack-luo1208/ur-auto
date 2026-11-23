@@ -1,9 +1,8 @@
 name: mirror
 
 # Keeps https://github.com/Jack-luo1208/ur-auto in sync with this repository.
-# Needs one secret: MIRROR_TOKEN — a PAT with `repo` scope on Jack-luo1208/ur-auto
-# (or a fine-grained token with Contents: read/write on that repo).
-# Without it the job exits green and does nothing.
+# Needs one secret: MIRROR_TOKEN — a PAT with `Contents: read/write` on Jack-luo1208/ur-auto.
+# Without it the job exits green with a notice and does nothing.
 
 on:
   push:
@@ -22,13 +21,35 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Push to Jack-luo1208/ur-auto
+      - name: Check token
+        id: pre
         env:
           MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
         run: |
           if [ -z "$MIRROR_TOKEN" ]; then
-            echo "MIRROR_TOKEN not set — skipping mirror. Add it in Settings > Secrets to enable."
-            exit 0
+            echo "::notice title=mirror skipped::MIRROR_TOKEN 未设置，跳过同步。"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
-          git remote add target "https://x-access-token:${MIRROR_TOKEN}@github.com/Jack-luo1208/ur-auto.git"
-          git push --force target "HEAD:refs/heads/main"
+
+      - name: Push to Jack-luo1208/ur-auto
+        if: steps.pre.outputs.ready == 'true'
+        env:
+          MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+        run: |
+          export GIT_TERMINAL_PROMPT=0
+          TARGET="https://x-access-token:${MIRROR_TOKEN}@github.com/Jack-luo1208/ur-auto.git"
+          # isolated credentials: never fall back to the workflow's own token
+          GIT="git -c credential.helper= -c http.https://github.com/.extraheader="
+          if ! $GIT ls-remote "$TARGET" >/dev/null 2>&1; then
+            echo "::error title=mirror denied::MIRROR_TOKEN 读不到 Jack-luo1208/ur-auto（令牌无效或无权限）。"
+            echo "  1) 目标仓库 Settings -> Collaborators 把 cctrylyj 加进来（推荐），或"
+            echo "  2) 换一个对该仓库有 Contents: write 的 PAT，重新设置为 MIRROR_TOKEN。"
+            exit 1
+          fi
+          if ! $GIT push --force "$TARGET" "HEAD:refs/heads/main" 2>&1 | tail -5; then
+            echo "::error title=mirror push failed::令牌可读但不可写，需要 Contents: write。"
+            exit 1
+          fi
+          echo "::notice title=mirror ok::已同步到 Jack-luo1208/ur-auto"
