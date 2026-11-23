@@ -1,0 +1,7 @@
+# pool state (accounts, balances, api keys) — persisted via Actions cache
+state/
+# generated subscriptions (contain proxy credentials)
+sub/
+__pycache__/
+*.pyc
+.venv/

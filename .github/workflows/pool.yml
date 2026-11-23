@@ -1,0 +1,59 @@
+name: urn-pool
+
+on:
+  schedule:
+    # every 2 hours at :17 (UTC)
+    - cron: "17 */2 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "urnpool/**"
+      - "config.json"
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: urn-pool
+  cancel-in-progress: false
+
+jobs:
+  pool:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      # state/ holds pool.db (accounts + balances). It never enters git:
+      # it is restored/saved through the Actions cache instead.
+      - name: Restore pool state
+        uses: actions/cache@v4
+        with:
+          path: state
+          key: urnpool-state-${{ github.run_id }}
+          restore-keys: |
+            urnpool-state-
+
+      - name: Run pool pipeline (tick -> Clash -> PushPlus)
+        env:
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN || vars.PUSHPLUS_TOKEN }}
+          PYTHONUNBUFFERED: "1"
+        run: python -m urnpool pipeline --out sub
+
+      - name: Upload subscription artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urn-sub-${{ github.run_number }}
+          path: sub/
+          retention-days: 7

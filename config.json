@@ -1,0 +1,19 @@
+{
+  "api_base": "https://api.bringyour.com",
+  "db_path": "state/pool.db",
+  "standby_target": 5,
+  "refill_when_standby_at_or_below": 1,
+  "exhaust_threshold_bytes": 268435456,
+  "max_creates_per_tick": 5,
+  "register_delay_seconds": 2.0,
+  "node_locations": [
+    "Seattle, Washington",
+    "Chicago, Illinois",
+    "Miami, Florida",
+    "Los Angeles, California"
+  ],
+  "node_count": 1,
+  "mixed_port": 7890,
+  "pushplus_title_prefix": "URnetwork 订阅",
+  "pushplus_token": ""
+}
