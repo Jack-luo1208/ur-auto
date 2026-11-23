@@ -11,7 +11,20 @@ DC_HINTS = (
     "psychz", "coloc", "hosting", "data center", "datacenter", "vpn", "proxy", "m247", "gcore",
     "scaleway", "upcloud", "hostwinds", "cogent", "constant company", "cloudnium", "kamatera",
     "zenlayer", "ionos", "quadranet", "hivelocity", "serverhub", "hostpapa", "xirgo", "gocodeit",
+    "octopus", "ipxo", "ztnet", "web solution", "vps", "cloud", "server", "dedicated", "colo",
+    "colocation", "datacamp", "hostinger", "godaddy", "namecheap", "hosting solution",
 )
+
+# a real consumer line usually wears one of these words somewhere in ISP/org/AS
+RESIDENTIAL_HINTS = (
+    "at&t", "att", "charter", "spectrum", "comcast", "xfinity", "verizon", "centurylink", "frontier",
+    "cox", "optimum", "altice", "mediacom", "windstream", "brightspeed", "ziply", "sonic", "google fiber",
+    "atlas networks", "burlington telecom", "cable", "broadband", "communications", "telecom", "fiber",
+    "fibre", "wireless", "internet service", "telephone", "utilities", "pcs", "cellular",
+)
+
+# second-opinion sources that sell/lease datacenter IPs
+BAD_DOMAINS = ("ipxo.com", "m247.com", "zenlayer.com", "hostwinds.com", "quadranet.com")
 
 IP_FIELDS = "status,country,regionName,city,isp,org,as,proxy,hosting,query"
 
@@ -100,9 +113,28 @@ def clean_exit(info, want_city=None):
     hit = [h for h in DC_HINTS if h in blob]
     if hit:
         bad.append("dc-ish:" + ",".join(hit[:2]))
+    elif not any(h in blob for h in RESIDENTIAL_HINTS):
+        bad.append("no residential evidence")
     if want_city and info.get("city") and info["city"].lower() != want_city.lower():
         bad.append("city=" + info["city"])
     return (not bad), bad
+
+
+def second_opinion(ip):
+    """Cross-check the exit on ipwho.is: leased/VPS ranges usually leak their broker domain."""
+    try:
+        import urllib.request
+        with urllib.request.urlopen("https://ipwho.is/" + ip, timeout=20) as resp:
+            d = json.loads(resp.read())
+    except Exception:
+        return {}
+    conn = d.get("connection") or {}
+    sec = d.get("security") or {}
+    dom = (conn.get("domain") or "").lower()
+    out = {"isp": conn.get("isp"), "org": conn.get("org"), "domain": dom,
+           "hosting": sec.get("hosting"), "proxy": sec.get("proxy"), "vpn": sec.get("vpn")}
+    out["bad"] = bool(dom and any(dom.endswith(b) for b in BAD_DOMAINS)) or out.get("hosting") is True
+    return out
 
 
 def mint_node(api, api_key, location_query, rank=0, attempts=3, log=print):
@@ -127,6 +159,10 @@ def mint_node(api, api_key, location_query, rank=0, attempts=3, log=print):
         time.sleep(3)
         info = ip_info(httpp)
         ok, why = clean_exit(info, loc.get("city"))
+        if ok:
+            op = second_opinion(info.get("query") or "")
+            if op.get("bad"):
+                ok, why = False, ["second opinion: %s/%s" % (op.get("org") or op.get("isp"), op.get("domain"))]
         if not ok:
             log("  reject %s: %s" % (loc.get("city"), "; ".join(why)))
             api.remove_client(api_key, pt["client_id"])
