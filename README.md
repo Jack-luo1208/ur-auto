@@ -24,6 +24,8 @@ URnetwork 免费档账号池 + 自动订阅（Clash）+ PushPlus 推送。
 2. 首次运行（手动 `Run workflow` 或首次 push）会自动 bootstrap：注册 1 个 active + 5 个候补。
 3. 之后 `schedule` 每 2 小时自动跑；也可随时 `Run workflow`。
 
+**同步到 Jack-luo1208/ur-auto**：`.github/workflows/mirror.yml` 会把本仓库强推到目标仓库，只需加一个 Secret **`MIRROR_TOKEN`**（对 `Jack-luo1208/ur-auto` 有 `Contents: write` 的 PAT）。没配时该 job 直接绿灯跳过。
+
 **状态持久化**：`state/pool.db` 不入库，通过 `actions/cache`（key 前缀 `urnpool-state-`）在两次运行之间传递。缓存被清空时下一轮会自动重建号池（等同首次运行）。
 
 **产物**：`sub/clash.yaml`、`sub/raw.txt` 作为 artifact 保留 7 天；同一份 Clash 配置同时推送进微信。
@@ -31,8 +33,7 @@ URnetwork 免费档账号池 + 自动订阅（Clash）+ PushPlus 推送。
 ## 订阅格式
 
 生成的订阅本身就是 **Clash/Mihomo YAML**（`mixed-port: 7890`，`proxies` 为 `socks5`，`PROXY` 选择组 + `AUTO` url-test 组，规则 `LAN/CN 直连，其余走 PROXY`）。
-若上游拿到的是 `socks://` 链接（`sub/raw.txt`），`urnpool.subscription.to_clash()` 会按同一套参数转成 Clash；两条路径产出的 YAML 结构一致。
-
+pipeline 先产出 `socks://` 链接（`sub/raw.txt`），再由 `subscription.ensure_clash()` 判定：源已是 Clash（含 `proxies:`/`proxy-groups:`/`rules:`）就原样透传，否则按同一套节点参数转成 Clash——两条路径产出的 YAML 结构一致，推送的一律是 Clash。
 推送内容是 HTML 表格（节点/出口 IP/城市/ISP）+ `<pre>` 里的完整 YAML，直接复制进 Clash Verge / Mihomo 即可。
 
 ## 本地运行

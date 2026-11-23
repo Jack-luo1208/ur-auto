@@ -89,16 +89,17 @@ def build_nodes(p, cfg, log=print):
 def render_and_push(p, cfg, out_dir, do_push, log=print):
     os.makedirs(out_dir, exist_ok=True)
     nodes = build_nodes(p, cfg, log=log)
-    clash = subscription.to_clash(nodes, mixed_port=int(cfg.get("mixed_port", 7890)))
     links = subscription.to_links(nodes)
+    # 订阅源若已经是 Clash 就原样透传，否则按同一套节点参数转成 Clash 再推
+    clash, mode = subscription.ensure_clash(links, nodes, mixed_port=int(cfg.get("mixed_port", 7890)))
     path_yaml = os.path.join(out_dir, "clash.yaml")
     path_txt = os.path.join(out_dir, "raw.txt")
     open(path_yaml, "w", encoding="utf-8", newline="\n").write(clash)
     open(path_txt, "w", encoding="utf-8", newline="\n").write(links)
-    log("subscription: %d nodes -> %s" % (len(nodes), path_yaml))
+    log("subscription: %d nodes, format=%s -> %s" % (len(nodes), mode, path_yaml))
 
     summary = {"nodes": [{k: n.get(k) for k in ("name", "ip", "city", "isp", "g204", "xcom")} for n in nodes],
-               "clash_bytes": len(clash)}
+               "clash_bytes": len(clash), "format": mode}
 
     if do_push:
         stamp = time.strftime("%m-%d %H:%M", time.localtime())
@@ -154,7 +155,9 @@ def cmd_selftest(args):
     assert link.startswith("socks://tok_demo:@crisp.bringyour.com:7117#"), link
     skipped = notify.send("t", "c", token="")
     assert skipped.get("skipped") and not skipped.get("ok"), skipped
-    print("selftest ok: clash=%d bytes, link ok, push skip ok" % len(y))
+    assert subscription.ensure_clash(y, fake)[1] == "passthrough"
+    assert subscription.ensure_clash("socks://a:@b:1#c", fake)[1] == "converted"
+    print("selftest ok: clash=%d bytes, link ok, push skip ok, format detect ok" % len(y))
 
 
 def cmd_run(args):

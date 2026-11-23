@@ -235,3 +235,16 @@ def to_links(nodes):
     for n in nodes:
         out.append("socks://%s:@%s:%d#%s" % (n["username"], n["server"], n["port"], n["name"]))
     return "\n".join(out) + ("\n" if out else "")
+
+
+def is_clash(text):
+    """True when the subscription already is a Clash/Mihomo config."""
+    low = (text or "").lower()
+    return "proxies:" in low and "proxy-groups:" in low and "rules:" in low
+
+
+def ensure_clash(text, nodes, mixed_port=7890):
+    """Return Clash YAML: pass through if the source already is Clash, else convert."""
+    if is_clash(text):
+        return text, "passthrough"
+    return to_clash(nodes, mixed_port=mixed_port), "converted"
