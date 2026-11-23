@@ -12,7 +12,7 @@
     "Miami, Florida",
     "Los Angeles, California"
   ],
-  "node_count": 1,
+  "node_count": 2,
   "mixed_port": 7890,
   "pushplus_title_prefix": "URnetwork 订阅",
   "pushplus_token": ""
