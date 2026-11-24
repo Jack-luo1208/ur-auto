@@ -16,24 +16,28 @@ URnetwork 免费档账号池 + 自动订阅（Clash）+ PushPlus 推送。
 
 余额来自 `GET /subscription/balance` 的 `balance_byte_count`（免费档 30 GiB/日，01:00Z 滚窗口）。
 
+## 两个仓库的分工
+
+| 仓库 | 角色 | 干什么 |
+|---|---|---|
+| `Jack-luo1208/ur-auto` | **主跑仓库** | 定时/手动跑 `urn-pool`：建池、验节点、转 Clash、PushPlus 推送 |
+| `cctrylyj/ur-auto` | 源仓库 | 只跑 `mirror`：把代码强推到主跑仓库，自己不再跑池 |
+
+两个 workflow 都用 `if: github.repository == ...` 做了互斥，所以**任何一次改动只会跑一轮池**，不会双倍建号、也不会双倍推送。
+
 ## GitHub Actions 用法
 
-1. 仓库 Settings → Secrets and variables → Actions 添加 **`PUSHPLUS_TOKEN`**（pushplus.plus 微信扫码后“一对一推送”里复制）。
-   - 也可放在 *Variables* 里，workflow 用 `secrets.PUSHPLUS_TOKEN || vars.PUSHPLUS_TOKEN` 兜底读取。
-   - 没配置时 pipeline 照常跑，只是跳过推送并在日志里说明。
-2. 首次运行（手动 `Run workflow` 或首次 push）会自动 bootstrap：注册 1 个 active + 5 个候补。
-3. 之后 `schedule` 每 2 小时自动跑；也可随时 `Run workflow`。
+1. 主跑仓库 `Jack-luo1208/ur-auto` → Settings → Secrets and variables → Actions → `PUSHPLUS_TOKEN`（已配置）。
+2. 首次运行会自动 bootstrap：注册 1 个 active + 5 个候补。
+3. `schedule` 每 2 小时跑一次；也可在 Actions 页点 **Run workflow** 手动触发。
 
-**同步到 Jack-luo1208/ur-auto**：`.github/workflows/mirror.yml` 会把本仓库强推到目标仓库，只需让该令牌有权限，二选一：
-
-- **A（推荐，不用碰 token）**：打开 `Jack-luo1208/ur-auto` → Settings → Collaborators → 添加 `cctrylyj`（Write）→ 把本机凭据对应的账号拉进去后，直接在这里推即可。
-- **B（用 PAT）**：在 `Jack-luo1208` 账号下建一个带 `Contents: read/write` 的 PAT，然后一条命令写进 Secret：
+**同步**：`.github/workflows/mirror.yml` 用 `MIRROR_TOKEN`（对主跑仓库有 `Contents: write` 的 PAT）强推；本机可用
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\set-mirror-token.ps1 -Token ghp_xxxxxxxx -Dispatch
+powershell -ExecutionPolicy Bypass -File scripts\set-mirror-token.ps1 -Token ghp_xxxx -Dispatch
 ```
 
-脚本会用本机已保存的 GitHub 凭据调 API、用仓库公钥加密后写入 `MIRROR_TOKEN`，并顺手触发一次 mirror。没配置时 mirror job 直接绿灯跳过，不影响主流程。
+没配令牌时 mirror 绿灯跳过，不影响池流程。
 
 **状态持久化**：`state/pool.db` 不入库，通过 `actions/cache`（key 前缀 `urnpool-state-`）在两次运行之间传递。缓存被清空时下一轮会自动重建号池（等同首次运行）。
 
