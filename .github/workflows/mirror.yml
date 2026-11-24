@@ -1,8 +1,8 @@
 name: mirror
 
-# Keeps https://github.com/Jack-luo1208/ur-auto in sync with this repository.
-# Needs one secret: MIRROR_TOKEN — a PAT with `Contents: read/write` on Jack-luo1208/ur-auto.
-# Without it the job exits green with a notice and does nothing.
+# 把本仓库同步到 Jack-luo1208/ur-auto（那边才是主跑仓库）。
+# 需要的 Secret：MIRROR_TOKEN —— 对 Jack-luo1208/ur-auto 有 Contents: read/write 的 PAT。
+# 没配置时：绿灯跳过，不影响主流程。
 
 on:
   push:
@@ -14,6 +14,8 @@ permissions:
 
 jobs:
   mirror:
+    # 只在备用源仓库执行；镜像仓自身不再回推
+    if: github.repository == 'cctrylyj/ur-auto'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -40,16 +42,11 @@ jobs:
         run: |
           export GIT_TERMINAL_PROMPT=0
           TARGET="https://x-access-token:${MIRROR_TOKEN}@github.com/Jack-luo1208/ur-auto.git"
-          # isolated credentials: never fall back to the workflow's own token
+          # 隔离凭据：绝不复用 workflow 自带 token
           GIT="git -c credential.helper= -c http.https://github.com/.extraheader="
           if ! $GIT ls-remote "$TARGET" >/dev/null 2>&1; then
             echo "::error title=mirror denied::MIRROR_TOKEN 读不到 Jack-luo1208/ur-auto（令牌无效或无权限）。"
-            echo "  1) 目标仓库 Settings -> Collaborators 把 cctrylyj 加进来（推荐），或"
-            echo "  2) 换一个对该仓库有 Contents: write 的 PAT，重新设置为 MIRROR_TOKEN。"
             exit 1
           fi
-          if ! $GIT push --force "$TARGET" "HEAD:refs/heads/main" 2>&1 | tail -5; then
-            echo "::error title=mirror push failed::令牌可读但不可写，需要 Contents: write。"
-            exit 1
-          fi
+          $GIT push --force "$TARGET" "HEAD:refs/heads/main"
           echo "::notice title=mirror ok::已同步到 Jack-luo1208/ur-auto"

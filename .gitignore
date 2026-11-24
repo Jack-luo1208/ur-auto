@@ -2,6 +2,9 @@
 state/
 # generated subscriptions (contain proxy credentials)
 sub/
+# local helper scripts / token scratch — never commit
+_mirror_tok.txt
+_*.py
 __pycache__/
 *.pyc
 .venv/
