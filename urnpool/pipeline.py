@@ -79,8 +79,23 @@ def build_nodes(p, cfg, log=print):
     used_cc = set()
     hint = bool(cfg.get("require_residential_hint", False))
     strict_city = bool(cfg.get("strict_city", False))
-    budget = float(cfg.get("mint_budget_seconds", 780))
+    budget = float(cfg.get("mint_budget_seconds", 900))
     started = time.time()
+
+    # 记住上一轮判定失败的 provider，本轮直接跳过（平台参数 exclude_client_ids）
+    try:
+        p.store.purge_bad()
+        exclude = set(p.store.bad_provider_ids(max_age_seconds=int(cfg.get("bad_provider_ttl_seconds", 86400))))
+    except Exception:
+        exclude = set()
+    if exclude:
+        log("  skipping %d providers judged bad in the last 24h" % len(exclude))
+
+    def mark_bad(pid, reason):
+        try:
+            p.store.mark_bad(pid, reason)
+        except Exception:
+            pass
 
     def out_of_budget():
         return time.time() - started > budget
@@ -97,7 +112,8 @@ def build_nodes(p, cfg, log=print):
                 continue  # 尽量一个国家只出一个节点，覆盖面更广
             log("pin: %s/%s" % (loc.get("_cc"), loc.get("city")))
             node = subscription.mint_node(p.api, acc["api_key"], loc, rank=len(nodes), log=log,
-                                          require_hint=hint, strict_city=strict_city)
+                                          require_hint=hint, strict_city=strict_city,
+                                          exclude=exclude, mark_bad=mark_bad)
             if node:
                 nodes.append(node)
                 used_cc.add(loc.get("_cc"))
@@ -107,7 +123,8 @@ def build_nodes(p, cfg, log=print):
                 break
             log("pin: %s" % query)
             node = subscription.mint_node(p.api, acc["api_key"], query, rank=len(nodes), log=log,
-                                          require_hint=hint, strict_city=strict_city)
+                                          require_hint=hint, strict_city=strict_city,
+                                          exclude=exclude, mark_bad=mark_bad)
             if node:
                 nodes.append(node)
     return nodes

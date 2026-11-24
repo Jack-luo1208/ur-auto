@@ -105,8 +105,11 @@ class Urn:
         res = self._call("/network/find-provider-locations", {"query": query})
         return res.get("locations") or []
 
-    def find_providers(self, location_id, count=8):
-        res = self._call("/network/find-providers2", {"specs": [{"location_id": location_id}], "count": count})
+    def find_providers(self, location_id, count=8, exclude=None):
+        body = {"specs": [{"location_id": location_id}], "count": count}
+        if exclude:
+            body["exclude_client_ids"] = list(exclude)[:200]
+        res = self._call("/network/find-providers2", body)
         return res.get("providers") or []
 
     def auth_client(self, api_key, provider_client_id):

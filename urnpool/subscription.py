@@ -91,9 +91,9 @@ def _curl(url, proxy, timeout=30):
         return 0, body
 
 
-def ip_info(proxy, tries=3):
+def ip_info(proxy, tries=2):
     for _ in range(tries):
-        code, body = _curl("http://ip-api.com/json/?fields=" + IP_FIELDS, proxy, 25)
+        code, body = _curl("http://ip-api.com/json/?fields=" + IP_FIELDS, proxy, 18)
         if code == 200:
             try:
                 data = json.loads(body)
@@ -202,7 +202,8 @@ def discover_locations(api, cfg, log=print):
     return plan
 
 
-def mint_node(api, api_key, location, rank=0, attempts=3, log=print, require_hint=False, strict_city=False):
+def mint_node(api, api_key, location, rank=0, attempts=2, log=print, require_hint=False, strict_city=False,
+              exclude=None, mark_bad=None):
     """Pin one provider in a location and return a verified node dict, or None.
 
     `location` is a location dict from discovery (preferred) or a text query.
@@ -220,11 +221,16 @@ def mint_node(api, api_key, location, rank=0, attempts=3, log=print, require_hin
         loc = dict(location)
 
     label = "%s/%s" % (loc.get("_cc") or loc.get("country_code") or "??", loc.get("city") or loc.get("name"))
-    providers = api.find_providers(loc["location_id"], count=8)
+    try:
+        providers = api.find_providers(loc["location_id"], count=10, exclude=exclude)
+    except Exception:
+        providers = api.find_providers(loc["location_id"], count=10)
     providers.sort(key=lambda p: p.get("estimated_bytes_per_second") or 0, reverse=True)
     for prov in providers[:attempts]:
         pt = api.auth_client(api_key, prov["client_id"])
         if not pt.get("auth_token"):
+            if mark_bad:
+                mark_bad(prov["client_id"], "no auth_token")
             continue
         host = pt.get("proxy_host") or "crisp.bringyour.com"
         s_port = pt.get("socks_proxy_port")
@@ -243,6 +249,8 @@ def mint_node(api, api_key, location, rank=0, attempts=3, log=print, require_hin
         if not ok:
             log("  reject %s: %s" % (label, "; ".join(why)))
             api.remove_client(api_key, pt["client_id"])
+            if mark_bad:
+                mark_bad(prov["client_id"], "; ".join(why))
             continue
         g_code = 0
         for _ in range(3):

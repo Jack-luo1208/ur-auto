@@ -43,5 +43,6 @@
   "pushplus_title_prefix": "URnetwork 订阅",
   "pushplus_token": "",
   "strict_city": false,
-  "mint_budget_seconds": 780
+  "mint_budget_seconds": 900,
+  "bad_provider_ttl_seconds": 86400
 }

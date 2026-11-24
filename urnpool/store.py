@@ -31,7 +31,13 @@ CREATE TABLE IF NOT EXISTS events (
     kind       TEXT NOT NULL,
     detail     TEXT
 );
+CREATE TABLE IF NOT EXISTS bad_providers (
+    provider_id TEXT PRIMARY KEY,
+    ts          INTEGER NOT NULL,
+    reason      TEXT
+);
 CREATE INDEX IF NOT EXISTS idx_accounts_status ON accounts(status);
+CREATE INDEX IF NOT EXISTS idx_bad_ts ON bad_providers(ts);
 """
 
 
@@ -87,6 +93,24 @@ class Store:
     def log(self, kind, account_id=None, detail=""):
         self.db.execute("INSERT INTO events (ts, account_id, kind, detail) VALUES (?,?,?,?)",
                         (int(time.time()), account_id, kind, detail))
+        self.db.commit()
+
+    # ---------- provider memory ----------
+    def mark_bad(self, provider_id, reason=""):
+        self.db.execute("INSERT INTO bad_providers (provider_id, ts, reason) VALUES (?,?,?)"
+                        " ON CONFLICT(provider_id) DO UPDATE SET ts=excluded.ts, reason=excluded.reason",
+                        (provider_id, int(time.time()), str(reason)[:120]))
+        self.db.commit()
+
+    def bad_provider_ids(self, max_age_seconds=86400, limit=200):
+        cutoff = int(time.time()) - int(max_age_seconds)
+        rows = self.db.execute("SELECT provider_id FROM bad_providers WHERE ts >= ?"
+                               " ORDER BY ts DESC LIMIT ?", (cutoff, limit)).fetchall()
+        return [r["provider_id"] for r in rows]
+
+    def purge_bad(self, max_age_seconds=86400 * 3):
+        cutoff = int(time.time()) - int(max_age_seconds)
+        self.db.execute("DELETE FROM bad_providers WHERE ts < ?", (cutoff,))
         self.db.commit()
 
     # ---------- reads ----------
