@@ -76,13 +76,40 @@ def build_nodes(p, cfg, log=print):
     except Exception as exc:
         log("  prune skipped: %s" % str(exc)[:80])
     nodes = []
-    for query in cfg.get("node_locations", ["Seattle, Washington"]):
-        if len(nodes) >= want:
-            break
-        log("pin: %s" % query)
-        node = subscription.mint_node(p.api, acc["api_key"], query, rank=len(nodes), log=log)
-        if node:
-            nodes.append(node)
+    used_cc = set()
+    hint = bool(cfg.get("require_residential_hint", False))
+    strict_city = bool(cfg.get("strict_city", False))
+    budget = float(cfg.get("mint_budget_seconds", 780))
+    started = time.time()
+
+    def out_of_budget():
+        return time.time() - started > budget
+
+    if cfg.get("location_mode", "auto") == "auto":
+        plan = subscription.discover_locations(p.api, cfg, log=log)
+        for loc in plan:
+            if len(nodes) >= want:
+                break
+            if out_of_budget():
+                log("  mint budget reached (%.0fs), publishing what we have" % budget)
+                break
+            if loc.get("_cc") in used_cc:
+                continue  # 尽量一个国家只出一个节点，覆盖面更广
+            log("pin: %s/%s" % (loc.get("_cc"), loc.get("city")))
+            node = subscription.mint_node(p.api, acc["api_key"], loc, rank=len(nodes), log=log,
+                                          require_hint=hint, strict_city=strict_city)
+            if node:
+                nodes.append(node)
+                used_cc.add(loc.get("_cc"))
+    else:
+        for query in cfg.get("node_locations", []):
+            if len(nodes) >= want or out_of_budget():
+                break
+            log("pin: %s" % query)
+            node = subscription.mint_node(p.api, acc["api_key"], query, rank=len(nodes), log=log,
+                                          require_hint=hint, strict_city=strict_city)
+            if node:
+                nodes.append(node)
     return nodes
 
 
@@ -98,7 +125,8 @@ def render_and_push(p, cfg, out_dir, do_push, log=print):
     open(path_txt, "w", encoding="utf-8", newline="\n").write(links)
     log("subscription: %d nodes, format=%s -> %s" % (len(nodes), mode, path_yaml))
 
-    summary = {"nodes": [{k: n.get(k) for k in ("name", "ip", "city", "isp", "g204", "xcom")} for n in nodes],
+    summary = {"nodes": [{k: n.get(k) for k in ("name", "ip", "cc", "country", "city", "isp", "g204", "xcom")}
+                         for n in nodes],
                "clash_bytes": len(clash), "format": mode,
                "ts": time.strftime("%Y-%m-%d %H:%M:%S")}
     # public-safe copy for CI artifacts: node metadata only, never the credential
@@ -110,12 +138,13 @@ def render_and_push(p, cfg, out_dir, do_push, log=print):
         head = "<h3>URnetwork 订阅（Clash）</h3>"
         if nodes:
             rows = "".join(
-                "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
-                    html.escape(n["name"]), html.escape(str(n.get("ip"))), html.escape(str(n.get("city"))),
-                    html.escape(str(n.get("isp"))))
+                "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+                    html.escape(n["name"]), html.escape(str(n.get("ip"))),
+                    html.escape("%s %s" % (n.get("cc") or "", n.get("city") or "")),
+                    html.escape(str(n.get("isp"))), html.escape("%s/%s" % (n.get("g204"), n.get("xcom"))))
                 for n in nodes)
             head += ("<table border=1 cellspacing=0 cellpadding=4><tr><th>节点</th><th>出口 IP</th>"
-                     "<th>城市</th><th>ISP</th></tr>%s</table>" % rows)
+                     "<th>国家/城市</th><th>ISP</th><th>204/x</th></tr>%s</table>" % rows)
         else:
             head += "<p>本轮未取到合格住宅出口（全部被淘汰）。</p>"
         content = (head + "<p>Clash 配置（%s 生成，共 %d 个节点）：</p><pre style=\"white-space:pre-wrap\">%s</pre>"

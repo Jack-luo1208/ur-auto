@@ -98,13 +98,17 @@ def ip_info(proxy, tries=3):
     return {}
 
 
-def clean_exit(info, want_city=None):
-    """Strict residential judgement: US, double false, real ISP, city match when known."""
+def clean_exit(info, want_city=None, want_country=None, require_hint=False, strict_city=False):
+    """Country-agnostic residential judgement: double false, no hosting signals.
+
+    Country mismatch is a hard fail (a HK provider must exit in HK). City is only
+    a soft signal: geolocation of a residential line often names a nearby town,
+    so it rejects only when `strict_city` is on. The "residential wording" check
+    likewise applies only when `require_hint` is set.
+    """
     if not info:
         return False, ["no exit answer"]
     bad = []
-    if info.get("country") != "United States":
-        bad.append("country=" + str(info.get("country")))
     if info.get("proxy") is not False:
         bad.append("proxy=%s" % info.get("proxy"))
     if info.get("hosting") is not False:
@@ -113,10 +117,16 @@ def clean_exit(info, want_city=None):
     hit = [h for h in DC_HINTS if h in blob]
     if hit:
         bad.append("dc-ish:" + ",".join(hit[:2]))
-    elif not any(h in blob for h in RESIDENTIAL_HINTS):
+    elif require_hint and not any(h in blob for h in RESIDENTIAL_HINTS):
         bad.append("no residential evidence")
-    if want_city and info.get("city") and info["city"].lower() != want_city.lower():
-        bad.append("city=" + info["city"])
+    if want_country and info.get("country"):
+        got = info["country"].lower()
+        want = want_country.lower()
+        if got != want and want not in got and got not in want:
+            bad.append("country=%s" % info["country"])
+    if strict_city and want_city and info.get("city") and want_city.isascii():
+        if info["city"].lower() != want_city.lower():
+            bad.append("city=%s" % info["city"])
     return (not bad), bad
 
 
@@ -137,13 +147,72 @@ def second_opinion(ip):
     return out
 
 
-def mint_node(api, api_key, location_query, rank=0, attempts=3, log=print):
-    """Pin one provider in a location and return a verified node dict, or None."""
-    locs = [l for l in api.find_locations(location_query) if l.get("location_type") == "city"]
-    if not locs:
-        log("  no city for %s" % location_query)
-        return None
-    loc = locs[0]
+def discover_locations(api, cfg, log=print):
+    """Return city locations ordered by country priority, worldwide.
+
+    `country_priority` decides the order (nearby countries first for latency),
+    `exclude_countries` drops ones the caller never wants, and every remaining
+    country with providers is appended so the pool never starves.
+    """
+    try:
+        all_locs = api.find_locations("")
+    except Exception as exc:
+        log("  discovery failed: %s" % str(exc)[:80])
+        return []
+    countries = {}
+    for loc in all_locs:
+        if loc.get("location_type") != "country":
+            continue
+        cc = (loc.get("country_code") or "").upper()
+        if not cc or (loc.get("provider_count") or 0) <= 0:
+            continue
+        countries[cc] = loc
+
+    exclude = {c.upper() for c in cfg.get("exclude_countries", [])}
+    priority = [c.upper() for c in cfg.get("country_priority", [])]
+    ordered = [cc for cc in priority if cc in countries and cc not in exclude]
+    rest = [cc for cc, _ in sorted(countries.items(), key=lambda kv: -(kv[1].get("provider_count") or 0))
+            if cc not in ordered and cc not in exclude]
+
+    plan = []
+    max_countries = int(cfg.get("max_countries_per_run", 8))
+    min_city = int(cfg.get("min_city_providers", 1))
+    per_country = int(cfg.get("cities_per_country", 2))
+    for cc in (ordered + rest)[:max_countries]:
+        country = countries[cc]
+        try:
+            locs = api.find_locations(country.get("name") or cc)
+        except Exception:
+            locs = []
+        cities = [l for l in locs
+                  if l.get("location_type") == "city" and (l.get("provider_count") or 0) >= min_city]
+        cities.sort(key=lambda l: (l.get("stable") is True, l.get("provider_count") or 0), reverse=True)
+        for city in cities[:per_country]:
+            city["_cc"] = cc
+            city["_country"] = country.get("name") or cc
+            plan.append(city)
+    log("  plan: %d city locations across %d countries" % (len(plan), len({p["_cc"] for p in plan})))
+    return plan
+
+
+def mint_node(api, api_key, location, rank=0, attempts=3, log=print, require_hint=False, strict_city=False):
+    """Pin one provider in a location and return a verified node dict, or None.
+
+    `location` is a location dict from discovery (preferred) or a text query.
+    """
+    if isinstance(location, str):
+        locs = [l for l in api.find_locations(location)
+                if l.get("location_type") in ("city", "region", "country")]
+        if not locs:
+            log("  no location for %s" % location)
+            return None
+        loc = locs[0]
+        loc["_cc"] = (loc.get("country_code") or "").upper()
+        loc["_country"] = loc.get("country")
+    else:
+        loc = dict(location)
+
+    label = "%s/%s" % (loc.get("_cc") or loc.get("country_code") or "??", loc.get("city") or loc.get("name"))
     providers = api.find_providers(loc["location_id"], count=8)
     providers.sort(key=lambda p: p.get("estimated_bytes_per_second") or 0, reverse=True)
     for prov in providers[:attempts]:
@@ -158,13 +227,14 @@ def mint_node(api, api_key, location_query, rank=0, attempts=3, log=print):
         httpp = "http://%s:@%s:%s" % (pt["auth_token"], dial, h_port)
         time.sleep(3)
         info = ip_info(httpp)
-        ok, why = clean_exit(info, loc.get("city"))
+        ok, why = clean_exit(info, loc.get("city"), want_country=loc.get("_country"),
+                             require_hint=require_hint, strict_city=strict_city)
         if ok:
             op = second_opinion(info.get("query") or "")
             if op.get("bad"):
                 ok, why = False, ["second opinion: %s/%s" % (op.get("org") or op.get("isp"), op.get("domain"))]
         if not ok:
-            log("  reject %s: %s" % (loc.get("city"), "; ".join(why)))
+            log("  reject %s: %s" % (label, "; ".join(why)))
             api.remove_client(api_key, pt["client_id"])
             continue
         g_code = 0
@@ -180,11 +250,14 @@ def mint_node(api, api_key, location_query, rank=0, attempts=3, log=print):
                 break
             time.sleep(2)
         if g_code != 204 or x_code != 200:
-            log("  reject %s: checks g204=%s x=%s" % (loc.get("city"), g_code, x_code))
+            log("  reject %s: checks g204=%s x=%s" % (label, g_code, x_code))
             api.remove_client(api_key, pt["client_id"])
             continue
+        cc = (loc.get("_cc") or "XX").upper()
+        city = info.get("city") or loc.get("city") or "City"
+        isp = (info.get("isp") or "ISP").split()[0]
         node = {
-            "name": "UR-US-%s-%s-%02d" % (info.get("city", "US"), (info.get("isp") or "ISP").split()[0], rank + 1),
+            "name": "UR-%s-%s-%s-%02d" % (cc, city.replace(" ", ""), isp, rank + 1),
             "type": "socks5",
             "server": host,
             "port": int(s_port),
@@ -192,14 +265,16 @@ def mint_node(api, api_key, location_query, rank=0, attempts=3, log=print):
             "password": "",
             "udp": True,
             "ip": info.get("query"),
-            "city": info.get("city"),
+            "country": info.get("country"),
+            "cc": cc,
+            "city": city,
             "isp": info.get("isp"),
             "as": info.get("as"),
             "g204": g_code,
             "xcom": x_code,
             "client_id": pt["client_id"],
         }
-        log("  node %s %s %s g204=%s x=%s" % (info.get("query"), info.get("city"), info.get("isp"), g_code, x_code))
+        log("  node %s %s %s %s g204=%s x=%s" % (info.get("query"), cc, city, info.get("isp"), g_code, x_code))
         return node
     return None
 

@@ -11,8 +11,11 @@ URnetwork 免费档账号池 + 自动订阅（Clash）+ PushPlus 推送。
 | `refill_when_standby_at_or_below` | 1 | 候补掉到 1 个就补齐到 5 |
 | `exhaust_threshold_bytes` | 268435456 (256 MiB) | 余额低于此值即视为耗尽 |
 | `max_creates_per_tick` | 5 | 单轮最多新建账号（平台限制 5 个/分钟） |
-| `node_count` | 1 | 每轮产出几个节点 |
-| `node_locations` | Seattle / Chicago / Miami / LA | 轮询的取样城市 |
+| `location_mode` | auto | `auto` 全球发现；`list` 只用 `node_locations` 文本查询 |
+| `country_priority` | HK/TW/JP/SG/KR… | 国家优先顺序（靠近的先） |
+| `exclude_countries` | `["CN"]` | 永不使用的国家 |
+| `node_count` | 2 | 每轮产出几个节点（来自不同国家） |
+| `mint_budget_seconds` | 780 | 抽节点的时间预算，到点就发布已有结果 |
 
 余额来自 `GET /subscription/balance` 的 `balance_byte_count`（免费档 30 GiB/日，01:00Z 滚窗口）。
 
@@ -62,7 +65,17 @@ python -m urnpool simulate --standby 2   # 本地演练淘汰/补齐，不烧真
 
 ## 节点判定（不达标就删）
 
-出口必须同时满足：`country=United States`、ip-api `proxy=false`、`hosting=false`、ISP 非机房关键词、城市与 provider 所在地一致；建好后实测 `generate_204 = 204` 与 `https://x.com/ = 200`。任一不满足即 `POST /network/remove-client`，换下一个 provider。
+不再限定国家。每轮先用 `/network/find-provider-locations`（空 query 返回全球 86 个国家）做一次发现，按 `country_priority` 排序（默认港澳台日新韩马泰越菲印尼 → 美加英德荷法澳… ），`exclude_countries` 里的直接跳过（默认 `CN`），每个国家取 provider 最多的 2 个城市，一个国家最多出 1 个节点。
+
+出口必须同时满足：
+
+- ip-api `proxy=false` 且 `hosting=false`（双 false）
+- ISP/org/AS 不命中机房关键词（aws/cloud/hosting/colo/oracle/ipxo/ztnet/octopus…）
+- ipwho.is 二次核对：`security.hosting` 不为 true，公司域名不是 IP 租售商（ipxo、m247、zenlayer…）
+- 国家与 provider 所在国一致（**硬性**）；城市只作参考（住宅 IP 常被定位到隔壁城镇，`strict_city: true` 才严格比对）
+- 建好后实测 `generate_204 = 204` 与 `https://x.com/ = 200`
+
+任一不满足即 `POST /network/remove-client`，换下一个 provider / 下一个国家。`mint_budget_seconds`（默认 780s）到点就停，把已抽到的先发出去，避免拖爆 job 超时。
 
 ## 安全说明
 
