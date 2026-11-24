@@ -13,6 +13,11 @@ DC_HINTS = (
     "zenlayer", "ionos", "quadranet", "hivelocity", "serverhub", "hostpapa", "xirgo", "gocodeit",
     "octopus", "ipxo", "ztnet", "web solution", "vps", "cloud", "server", "dedicated", "colo",
     "colocation", "datacamp", "hostinger", "godaddy", "namecheap", "hosting solution",
+    # VPS/租用品牌名录：这些名字本身就是机房，ip-api 常误判成住宅
+    "zouter", "v.ps", "akile", "cloudie", "pq hosting", "pqhosting", "xtom", "dedipath",
+    "bandwagon", "hostus", "sharktech", "servarica", "greencloud", "virmach", "racknerd",
+    "colocrossing", "hostdare", "cloudcone", "alphavps", "layerstack", "hosthatch", "buyvm",
+    "frantech", "naranja", "kuroit", "搬瓦工", "vultr", "linode", "digitalocean",
 )
 
 # a real consumer line usually wears one of these words somewhere in ISP/org/AS
@@ -24,7 +29,9 @@ RESIDENTIAL_HINTS = (
 )
 
 # second-opinion sources that sell/lease datacenter IPs
-BAD_DOMAINS = ("ipxo.com", "m247.com", "zenlayer.com", "hostwinds.com", "quadranet.com")
+BAD_DOMAINS = ("ipxo.com", "m247.com", "zenlayer.com", "hostwinds.com", "quadranet.com",
+               "zouter.io", "v.ps", "akile.io", "cloudie.hk", "pq.hosting", "xtom.com",
+               "dedipath.com", "racknerd.com", "colocrossing.com", "buyvm.net", "frantech.ca")
 
 IP_FIELDS = "status,country,regionName,city,isp,org,as,proxy,hosting,query"
 
