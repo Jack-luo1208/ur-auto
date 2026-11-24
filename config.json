@@ -8,9 +8,15 @@
   "register_delay_seconds": 2.0,
   "node_locations": [
     "Seattle, Washington",
-    "Chicago, Illinois",
     "Miami, Florida",
-    "Los Angeles, California"
+    "Chicago, Illinois",
+    "Los Angeles, California",
+    "Atlanta, Georgia",
+    "Houston, Texas",
+    "Denver, Colorado",
+    "Boston, Massachusetts",
+    "Phoenix, Arizona",
+    "Portland, Oregon"
   ],
   "node_count": 2,
   "mixed_port": 7890,
