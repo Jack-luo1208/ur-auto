@@ -21,8 +21,6 @@ concurrency:
 
 jobs:
   pool:
-    # 只有主跑仓库执行；镜像仓收到同一份代码时不重复建号、不重复推送
-    if: github.repository == 'Jack-luo1208/ur-auto'
     runs-on: ubuntu-latest
     timeout-minutes: 32
     steps:
