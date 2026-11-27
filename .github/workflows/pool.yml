@@ -49,6 +49,7 @@ jobs:
       - name: Run pool pipeline (tick -> Clash -> PushPlus)
         env:
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN || vars.PUSHPLUS_TOKEN }}
+          PUSHPLUS_TOPIC: ${{ secrets.PUSHPLUS_TOPIC || vars.PUSHPLUS_TOPIC }}
           PYTHONUNBUFFERED: "1"
         run: python -m urnpool pipeline --out sub
 

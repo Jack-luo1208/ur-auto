@@ -167,9 +167,13 @@ def render_and_push(p, cfg, out_dir, do_push, log=print):
         content = (head + "<p>Clash 配置（%s 生成，共 %d 个节点）：</p><pre style=\"white-space:pre-wrap\">%s</pre>"
                    % (stamp, len(nodes), html.escape(clash)))
         res = notify.send("%s %s" % (cfg.get("pushplus_title_prefix", "URnetwork 订阅"), stamp), content,
-                          token=notify.token_from(cfg.get("pushplus_token")))
+                          token=notify.token_from(cfg.get("pushplus_token")),
+                          topic=notify.topic_from(cfg.get("pushplus_topic")))
         summary["push"] = {"ok": res.get("ok"), "reason": res.get("reason"), "skipped": res.get("skipped")}
         log("pushplus: %s" % json.dumps(summary["push"], ensure_ascii=False))
+        if not res.get("ok"):
+            # 推送失败必须让 CI 变红，否则 workflow 全绿却一条没发。
+            raise RuntimeError("PushPlus delivery failed: %s" % json.dumps(summary["push"], ensure_ascii=False))
 
     return summary
 

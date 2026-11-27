@@ -12,18 +12,27 @@ def token_from(cfg_token=None):
     return (os.environ.get("PUSHPLUS_TOKEN") or cfg_token or "").strip()
 
 
-def send(title, content, token=None, template="html", timeout=30):
+def topic_from(cfg_topic=None):
+    """PushPlus group topic; empty means the token's default channel."""
+    return (os.environ.get("PUSHPLUS_TOPIC") or cfg_topic or "").strip()
+
+
+def send(title, content, token=None, topic=None, template="html", timeout=30):
     """Returns dict {'ok': bool, 'raw': ...}. Missing token is reported, never raised."""
     token = (token or "").strip()
+    topic = (topic or "").strip()
     if not token:
         return {"ok": False, "skipped": True, "reason": "PUSHPLUS_TOKEN not set"}
-    body = json.dumps({
+    payload = {
         "token": token,
         "title": title[:100],
         "content": content,
         "template": template,
         "channel": "wechat",
-    }).encode()
+    }
+    if topic:
+        payload["topic"] = topic
+    body = json.dumps(payload).encode()
     req = urllib.request.Request(ENDPOINT, data=body, headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
