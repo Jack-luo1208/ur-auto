@@ -18,6 +18,7 @@ DC_HINTS = (
     "bandwagon", "hostus", "sharktech", "servarica", "greencloud", "virmach", "racknerd",
     "colocrossing", "hostdare", "cloudcone", "alphavps", "layerstack", "hosthatch", "buyvm",
     "frantech", "naranja", "kuroit", "搬瓦工", "vultr", "linode", "digitalocean",
+    "webhorizon", "vivistar", "ihc", "hosteons", "spartan", "aeza", "justhost", "time4vps",
 )
 
 # a real consumer line usually wears one of these words somewhere in ISP/org/AS
@@ -31,7 +32,8 @@ RESIDENTIAL_HINTS = (
 # second-opinion sources that sell/lease datacenter IPs
 BAD_DOMAINS = ("ipxo.com", "m247.com", "zenlayer.com", "hostwinds.com", "quadranet.com",
                "zouter.io", "v.ps", "akile.io", "cloudie.hk", "pq.hosting", "xtom.com",
-               "dedipath.com", "racknerd.com", "colocrossing.com", "buyvm.net", "frantech.ca")
+               "dedipath.com", "racknerd.com", "colocrossing.com", "buyvm.net", "frantech.ca",
+               "webhorizon.net", "hosteons.com", "aeza.net", "time4vps.com")
 
 IP_FIELDS = "status,country,regionName,city,isp,org,as,proxy,hosting,query"
 
