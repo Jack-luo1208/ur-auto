@@ -273,8 +273,8 @@ def mint_node(api, api_key, location, rank=0, attempts=2, log=print, require_hin
             # 本地 DNS 常被 Clash/TUN 污染成 198.18.x（fake IP），写域名会让客户端
             # 拨到假地址而超时。CI 验证时已用 resolve_host 拿到真实 IP，一并写进
             # 订阅让客户端跳过本地 DNS；server_host 保留原域名备查。
-            "server": dial,
-            "server_host": host,
+            "server": host,
+            "server_ip": dial,
             "port": int(s_port),
             "username": pt["auth_token"],
             "password": "",
@@ -307,6 +307,25 @@ def to_clash(nodes, mixed_port=7890):
         "mode: rule",
         "log-level: info",
         "ipv6: false",
+        "dns:",
+        "  enable: true",
+        "  enhanced-mode: fake-ip",
+        "  fake-ip-range: 198.18.0.1/16",
+        "  nameserver:",
+        "    - https://doh.pub/dns-query",
+        "    - https://dns.alidns.com/dns-query",
+        "  fake-ip-filter:",
+        "    - crisp.bringyour.com",
+        "    - '*.bringyour.com'",
+    ]
+    # 静态映射：CI 用公共 DoH 解析出的真实 IP，绕开本地 fake-ip DNS 污染。
+    # 对所有设备/网络通用（是服务器的公共 IP，不是客户端本机 IP）。
+    hosts = [(n.get("server_ip"), n.get("server")) for n in nodes if n.get("server_ip")]
+    if hosts:
+        lines.append("hosts:")
+        for ip, host in hosts:
+            lines.append("  %s: %s" % (yq(host), ip))
+    lines += [
         "",
         "proxies:",
     ]
