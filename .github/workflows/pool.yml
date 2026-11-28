@@ -50,24 +50,21 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: python -m urnpool pipeline --out sub
 
-      # 订阅地址：https://raw.githubusercontent.com/Jack-luo1208/ur-auto/sub/clash.yaml
-      # sub 分支只放这一个文件，每轮 force-push 覆盖；raw 直链可被 Clash 当订阅拉取。
-      - name: Publish subscription to sub branch
+      # 订阅地址（国内可达、实时同步、固定 URL）：
+      #   https://ghproxy.net/https://raw.githubusercontent.com/Jack-luo1208/ur-auto/sub2/clash.yaml
+      # sub2 分支只放根目录一个 clash.yaml，每轮 force-push 覆盖。
+      # ghproxy 直连 raw，无 CDN 缓存；jsDelivr purge 会被限流，故不用 CDN。
+      - name: Publish subscription to sub2 branch
         if: success()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout --orphan sub
+          git checkout --orphan sub2
           git rm -rf --cached . >/dev/null 2>&1 || true
           cp sub/clash.yaml clash.yaml
           git add -f clash.yaml
           git commit -m "chore: update clash subscription $(date -u +%Y-%m-%dT%H:%MZ)"
-          git push --force origin sub
-
-      # 清 CDN 缓存，否则 Clash 订阅会拉到上一轮的配置
-      - name: Purge jsDelivr cache
-        if: success()
-        run: curl -fsS --max-time 20 "https://purge.jsdelivr.net/gh/Jack-luo1208/ur-auto@sub/clash.yaml"
+          git push --force origin sub2
 
       - name: Upload run summary (no credentials)
         if: always()

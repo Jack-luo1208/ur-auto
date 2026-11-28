@@ -48,7 +48,14 @@ PAT 用 Fine-grained token：Resource owner 选 `Jack-luo1208`，只授权 `ur-a
 
 **状态持久化**：`state/pool.db` 不入库，通过 `actions/cache`（key 前缀 `urnpool-state-`）在两次运行之间传递。缓存被清空时下一轮会自动重建号池（等同首次运行）。
 
-**订阅地址**：`https://cdn.jsdelivr.net/gh/Jack-luo1208/ur-auto@sub/clash.yaml`（jsDelivr 国内可达；raw.githubusercontent.com 在国内常被墙）。每轮 CI force-push 到 `sub` 分支（该分支只放根目录一个 `clash.yaml`），再调 jsDelivr purge 接口清缓存。推送进微信的是这个**订阅链接** + 节点表格，不再把整份 YAML 塞进消息；Clash Verge / Mihomo 里「从链接导入订阅」粘贴该 URL 即可。`sub/clash.yaml`、`sub/raw.txt` 仍作为 artifact 保留 7 天。
+**订阅地址**：`https://ghproxy.net/https://raw.githubusercontent.com/Jack-luo1208/ur-auto/sub2/clash.yaml`
+
+- 国内可达（raw.githubusercontent.com 直连常被墙，ghproxy 代理可通）
+- 固定 URL，每轮 CI force-push 更新 `sub2` 分支根目录的 `clash.yaml`
+- 实时同步、无 CDN 缓存（jsDelivr purge 会被限流，故不用）
+- 配置里保留域名 server + DNS DoH + hosts 静态映射，任何设备/网络都能解析，不依赖本机 DNS、不写死客户端 IP
+
+推送进微信的是这个**订阅链接** + 节点表格，不再把整份 YAML 塞进消息；Clash Verge / Mihomo 里「从链接导入订阅」粘贴该 URL 即可。`sub/clash.yaml`、`sub/raw.txt` 仍作为 artifact 保留 7 天。
 
 ## 订阅格式
 
