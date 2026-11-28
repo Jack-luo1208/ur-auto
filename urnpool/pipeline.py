@@ -164,8 +164,16 @@ def render_and_push(p, cfg, out_dir, do_push, log=print):
                      "<th>国家/城市</th><th>ISP</th><th>204/x</th></tr>%s</table>" % rows)
         else:
             head += "<p>本轮未取到合格住宅出口（全部被淘汰）。</p>"
-        content = (head + "<p>Clash 配置（%s 生成，共 %d 个节点）：</p><pre style=\"white-space:pre-wrap\">%s</pre>"
-                   % (stamp, len(nodes), html.escape(clash)))
+        sub_url = cfg.get("subscription_url", "").strip()
+        if sub_url:
+            # 只推订阅链接，不在消息里塞整份配置（yaml 含凭据，且手机端复制不便）
+            content = (head + "<p><b>Clash 订阅链接</b>（%s 生成，共 %d 个节点）：</p>"
+                       "<p><a href=\"%s\">%s</a></p>"
+                       "<p>复制上面的 URL，在 Clash Verge / Mihomo 里「导入订阅链接」即可。链接内容每轮自动更新。</p>"
+                       % (stamp, len(nodes), html.escape(sub_url), html.escape(sub_url)))
+        else:
+            content = (head + "<p>Clash 配置（%s 生成，共 %d 个节点）：</p><pre style=\"white-space:pre-wrap\">%s</pre>"
+                       % (stamp, len(nodes), html.escape(clash)))
         res = notify.send("%s %s" % (cfg.get("pushplus_title_prefix", "URnetwork 订阅"), stamp), content,
                           token=notify.token_from(cfg.get("pushplus_token")),
                           topic=notify.topic_from(cfg.get("pushplus_topic")))

@@ -12,7 +12,7 @@ on:
       - ".github/workflows/**"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: urn-pool
@@ -49,6 +49,19 @@ jobs:
           PUSHPLUS_TOPIC: ${{ secrets.PUSHPLUS_TOPIC || vars.PUSHPLUS_TOPIC }}
           PYTHONUNBUFFERED: "1"
         run: python -m urnpool pipeline --out sub
+
+      # 订阅地址：https://raw.githubusercontent.com/Jack-luo1208/ur-auto/sub/clash.yaml
+      # sub 分支只放这一个文件，每轮 force-push 覆盖；raw 直链可被 Clash 当订阅拉取。
+      - name: Publish subscription to sub branch
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan sub
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          git add -f sub/clash.yaml
+          git commit -m "chore: update clash subscription $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push --force origin sub
 
       - name: Upload run summary (no credentials)
         if: always()

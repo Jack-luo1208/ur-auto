@@ -48,7 +48,7 @@ PAT 用 Fine-grained token：Resource owner 选 `Jack-luo1208`，只授权 `ur-a
 
 **状态持久化**：`state/pool.db` 不入库，通过 `actions/cache`（key 前缀 `urnpool-state-`）在两次运行之间传递。缓存被清空时下一轮会自动重建号池（等同首次运行）。
 
-**产物**：`sub/clash.yaml`、`sub/raw.txt` 作为 artifact 保留 7 天；同一份 Clash 配置同时推送进微信。
+**订阅地址**：`https://raw.githubusercontent.com/Jack-luo1208/ur-auto/sub/clash.yaml`，每轮由 CI force-push 到 `sub` 分支（该分支只放这一个文件）。推送进微信的是这个**订阅链接** + 节点表格，不再把整份 YAML 塞进消息；Clash Verge / Mihomo 里「导入订阅链接」粘贴该 URL 即可。`sub/clash.yaml`、`sub/raw.txt` 仍作为 artifact 保留 7 天。
 
 ## 订阅格式
 
