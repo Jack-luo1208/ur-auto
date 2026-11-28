@@ -41,6 +41,7 @@
   "node_count": 2,
   "mixed_port": 7890,
   "pushplus_title_prefix": "URnetwork 订阅",
+  "pushplus_topic": "clash",
   "pushplus_token": "",
   "strict_city": false,
   "mint_budget_seconds": 900,

@@ -11,7 +11,7 @@ import urllib.request
 ENDPOINT = "https://www.pushplus.plus/send"
 
 
-def send(title, content, template="txt", channel=None):
+def send(title, content, template="txt", channel=None, topic=None):
     payload = {
         "token": os.environ.get("PUSHPLUS_TOKEN", "").strip(),
         "title": title,
@@ -20,6 +20,8 @@ def send(title, content, template="txt", channel=None):
     }
     if channel:
         payload["channel"] = channel
+    if topic:
+        payload["topic"] = topic
     req = urllib.request.Request(
         ENDPOINT,
         data=json.dumps(payload).encode(),
@@ -37,10 +39,13 @@ def main():
         ("probe-A-minimal-txt", "A: minimal txt, default channel", "txt", None),
         ("probe-B-wechat-html", "<b>B: html via wechat channel</b>", "html", "wechat"),
         ("probe-C-wechat-txt", "C: txt via wechat channel", "txt", "wechat"),
+        ("probe-D-group-clash", "D: to group topic=clash", "txt", None, "clash"),
     ]
-    for title, content, template, channel in cases:
+    for case in cases:
+        title, content, template, channel = case[:4]
+        topic = case[4] if len(case) > 4 else None
         try:
-            r = send(title, content, template=template, channel=channel)
+            r = send(title, content, template=template, channel=channel, topic=topic)
             print("PROBE %-20s code=%s msg=%s data=%s" %
                   (title, r.get("code"), r.get("msg"), r.get("data")))
         except Exception as exc:
