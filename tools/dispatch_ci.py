@@ -11,7 +11,7 @@ import urllib.error
 import urllib.request
 
 REPO = "Jack-luo1208/ur-auto"
-WORKFLOW = "pool.yml"
+WORKFLOW = sys.argv[1] if len(sys.argv) > 1 else "pool.yml"
 REF = "main"
 TOKEN_FILE = os.path.expanduser("~/.ur-auto/gh_pat")
 

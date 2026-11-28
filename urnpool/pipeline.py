@@ -169,7 +169,8 @@ def render_and_push(p, cfg, out_dir, do_push, log=print):
         res = notify.send("%s %s" % (cfg.get("pushplus_title_prefix", "URnetwork 订阅"), stamp), content,
                           token=notify.token_from(cfg.get("pushplus_token")),
                           topic=notify.topic_from(cfg.get("pushplus_topic")))
-        summary["push"] = {"ok": res.get("ok"), "reason": res.get("reason"), "skipped": res.get("skipped")}
+        summary["push"] = {"ok": res.get("ok"), "reason": res.get("reason"), "skipped": res.get("skipped"),
+                           "msg": res.get("msg"), "data": res.get("data")}
         log("pushplus: %s" % json.dumps(summary["push"], ensure_ascii=False))
         if not res.get("ok"):
             # 推送失败必须让 CI 变红，否则 workflow 全绿却一条没发。
