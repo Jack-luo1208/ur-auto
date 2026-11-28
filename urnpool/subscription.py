@@ -276,7 +276,11 @@ def mint_node(api, api_key, location, rank=0, attempts=2, log=print, require_hin
         node = {
             "name": "UR-%s-%s-%s-%02d" % (cc, city.replace(" ", ""), isp, rank + 1),
             "type": "socks5",
-            "server": host,
+            # 本地 DNS 常被 Clash/TUN 污染成 198.18.x（fake IP），写域名会让客户端
+            # 拨到假地址而超时。CI 验证时已用 resolve_host 拿到真实 IP，一并写进
+            # 订阅让客户端跳过本地 DNS；server_host 保留原域名备查。
+            "server": dial,
+            "server_host": host,
             "port": int(s_port),
             "username": pt["auth_token"],
             "password": "",
