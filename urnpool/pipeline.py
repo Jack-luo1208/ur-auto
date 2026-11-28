@@ -86,6 +86,11 @@ def build_nodes(p, cfg, log=print):
     try:
         p.store.purge_bad()
         exclude = set(p.store.bad_provider_ids(max_age_seconds=int(cfg.get("bad_provider_ttl_seconds", 86400))))
+        # 封禁列表过大说明历史轮次误伤累积，全封会导致 0 节点；清空重来。
+        if len(exclude) >= 20:
+            log("  bad-provider list hit %d, clearing to avoid starving all providers" % len(exclude))
+            p.store.clear_bad()
+            exclude = set()
     except Exception:
         exclude = set()
     if exclude:

@@ -102,15 +102,19 @@ class Store:
                         (provider_id, int(time.time()), str(reason)[:120]))
         self.db.commit()
 
-    def bad_provider_ids(self, max_age_seconds=86400, limit=200):
+    def bad_provider_ids(self, max_age_seconds=86400, limit=20):
         cutoff = int(time.time()) - int(max_age_seconds)
         rows = self.db.execute("SELECT provider_id FROM bad_providers WHERE ts >= ?"
                                " ORDER BY ts DESC LIMIT ?", (cutoff, limit)).fetchall()
         return [r["provider_id"] for r in rows]
 
     def purge_bad(self, max_age_seconds=86400 * 3):
-        cutoff = int(time.time()) - int(max_age_seconds)
+        cutoff = int(time.time()) - max_age_seconds
         self.db.execute("DELETE FROM bad_providers WHERE ts < ?", (cutoff,))
+        self.db.commit()
+
+    def clear_bad(self):
+        self.db.execute("DELETE FROM bad_providers")
         self.db.commit()
 
     # ---------- reads ----------
