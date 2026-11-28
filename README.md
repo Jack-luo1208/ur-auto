@@ -25,7 +25,7 @@ URnetwork 免费档账号池 + 自动订阅（Clash）+ PushPlus 推送。
 
 ## GitHub Actions 用法
 
-1. `Jack-luo1208/ur-auto` → Settings → Secrets and variables → Actions → `PUSHPLUS_TOKEN`（已配置）；如要推到群组，再配 `PUSHPLUS_TOPIC`（例如 `clash`）。
+1. `Jack-luo1208/ur-auto` → Settings → Secrets and variables → Actions → `PUSHPLUS_TOKEN`（已配置）。推送目标走 `config.json` 里的 `pushplus_topic: "clash"`（群组）——**不要删掉这个 topic**：实测该账号的一对一消息虽然返回 `code=200` 但微信收不到，只有发到 `clash` 群组才能收到。私密群成员需在「群配置 → 查看二维码」扫码入群。
 2. 首次运行会自动 bootstrap：注册 1 个 active + 5 个候补。
 3. 由**外部定时器**每 2 小时触发一次 `workflow_dispatch`（GitHub 自带 cron 在高负载下会丢轮次，已从 workflow 移除）；也可在 Actions 页点 **Run workflow** 手动触发。
 
