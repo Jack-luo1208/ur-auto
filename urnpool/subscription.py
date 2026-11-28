@@ -48,16 +48,10 @@ def resolve_host(host):
     """
     if host in _DOH_CACHE:
         return _DOH_CACHE[host]
-    addr = host
-    try:
-        import socket
-        infos = socket.getaddrinfo(host, None)
-        ips = [i[4][0] for i in infos]
-        fake = [ip for ip in ips if ip.startswith("198.18.") or ip.startswith("198.19.")]
-        if fake and len(fake) == len(ips):
-            addr = _doh_a(host) or host
-    except Exception:
-        addr = _doh_a(host) or host
+    # 始终优先用 DoH 拿真实 IP：CI 本地 DNS 正常时 getaddrinfo 返回域名本身，
+    # 写进订阅会让客户端用被污染的本地 DNS 拨到 198.18.x 假 IP。用 IP 直连
+    # 可同时兼容客户端的 fake-ip DNS 模式。
+    addr = _doh_a(host) or host
     _DOH_CACHE[host] = addr
     return addr
 
