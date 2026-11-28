@@ -1,9 +1,8 @@
 name: urn-pool
 
 on:
-  schedule:
-    # every 2 hours at :17 (UTC)
-    - cron: "17 */2 * * *"
+  # GitHub's own scheduler drops most cron runs under load; an external timer
+  # (cron-job.org) calls workflow_dispatch every 2 hours instead. See README.
   workflow_dispatch:
   push:
     branches: [main]

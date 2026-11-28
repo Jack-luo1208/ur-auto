@@ -27,7 +27,22 @@ URnetwork 免费档账号池 + 自动订阅（Clash）+ PushPlus 推送。
 
 1. `Jack-luo1208/ur-auto` → Settings → Secrets and variables → Actions → `PUSHPLUS_TOKEN`（已配置）；如要推到群组，再配 `PUSHPLUS_TOPIC`（例如 `clash`）。
 2. 首次运行会自动 bootstrap：注册 1 个 active + 5 个候补。
-3. `schedule` 每 2 小时跑一次；也可在 Actions 页点 **Run workflow** 手动触发。
+3. 由**外部定时器**每 2 小时触发一次 `workflow_dispatch`（GitHub 自带 cron 在高负载下会丢轮次，已从 workflow 移除）；也可在 Actions 页点 **Run workflow** 手动触发。
+
+## 外部定时器（cron-job.org）
+
+免费版即可满足，每 2 小时执行一次：
+
+| 项 | 值 |
+|---|---|
+| URL | `https://api.github.com/repos/Jack-luo1208/ur-auto/actions/workflows/pool.yml/dispatches` |
+| 方法 | `POST` |
+| 请求头 | `Authorization: Bearer <PAT>`、`Accept: application/vnd.github+json` |
+| Body | `{"ref":"main"}` |
+
+PAT 用 Fine-grained token：Resource owner 选 `Jack-luo1208`，只授权 `ur-auto` 仓库，Permissions 里 **Actions: Read and write**（其余默认），有效期按需设置。PAT 只存在定时器里，不入仓库。
+
+本机也可直接触发：`python tools/dispatch_ci.py`（从环境变量 `GH_PAT` 或 `~/.ur-auto/gh_pat` 读取 token，不会打印它）。
 
 **推送失败即失败**：`urnpool pipeline` 在 PushPlus 投递失败时以非零退出，CI 直接报错，不会"全绿却一条没发"。
 
