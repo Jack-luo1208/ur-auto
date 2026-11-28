@@ -59,7 +59,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout --orphan sub
           git rm -rf --cached . >/dev/null 2>&1 || true
-          git add -f sub/clash.yaml
+          cp sub/clash.yaml clash.yaml
+          git add -f clash.yaml
           git commit -m "chore: update clash subscription $(date -u +%Y-%m-%dT%H:%MZ)"
           git push --force origin sub
 
