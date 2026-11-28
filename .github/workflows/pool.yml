@@ -64,6 +64,11 @@ jobs:
           git commit -m "chore: update clash subscription $(date -u +%Y-%m-%dT%H:%MZ)"
           git push --force origin sub
 
+      # 清 CDN 缓存，否则 Clash 订阅会拉到上一轮的配置
+      - name: Purge jsDelivr cache
+        if: success()
+        run: curl -fsS --max-time 20 "https://purge.jsdelivr.net/gh/Jack-luo1208/ur-auto@sub/clash.yaml"
+
       - name: Upload run summary (no credentials)
         if: always()
         uses: actions/upload-artifact@v4

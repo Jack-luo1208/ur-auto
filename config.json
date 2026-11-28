@@ -42,7 +42,7 @@
   "mixed_port": 7890,
   "pushplus_title_prefix": "URnetwork 订阅",
   "pushplus_topic": "clash",
-  "subscription_url": "https://raw.githubusercontent.com/Jack-luo1208/ur-auto/sub/clash.yaml",
+  "subscription_url": "https://cdn.jsdelivr.net/gh/Jack-luo1208/ur-auto@sub/clash.yaml",
   "pushplus_token": "",
   "strict_city": false,
   "mint_budget_seconds": 900,
