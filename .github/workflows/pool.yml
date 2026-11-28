@@ -51,7 +51,7 @@ jobs:
         run: python -m urnpool pipeline --out sub
 
       # 订阅地址（国内可达、实时同步、固定 URL）：
-      #   https://ghproxy.net/https://raw.githubusercontent.com/Jack-luo1208/ur-auto/sub2/clash.yaml
+      #   https://gh-proxy.com/https://raw.githubusercontent.com/Jack-luo1208/ur-auto/sub2/clash.yaml
       # sub2 分支只放根目录一个 clash.yaml，每轮 force-push 覆盖。
       # ghproxy 直连 raw，无 CDN 缓存；jsDelivr purge 会被限流，故不用 CDN。
       - name: Publish subscription to sub2 branch

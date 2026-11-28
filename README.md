@@ -48,7 +48,7 @@ PAT 用 Fine-grained token：Resource owner 选 `Jack-luo1208`，只授权 `ur-a
 
 **状态持久化**：`state/pool.db` 不入库，通过 `actions/cache`（key 前缀 `urnpool-state-`）在两次运行之间传递。缓存被清空时下一轮会自动重建号池（等同首次运行）。
 
-**订阅地址**：`https://ghproxy.net/https://raw.githubusercontent.com/Jack-luo1208/ur-auto/sub2/clash.yaml`
+**订阅地址**：`https://gh-proxy.com/https://raw.githubusercontent.com/Jack-luo1208/ur-auto/sub2/clash.yaml`
 
 - 国内可达（raw.githubusercontent.com 直连常被墙，ghproxy 代理可通）
 - 固定 URL，每轮 CI force-push 更新 `sub2` 分支根目录的 `clash.yaml`
